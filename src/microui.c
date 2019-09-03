@@ -25,27 +25,27 @@
 
 #include "microui.h"
 
-#define unused(x) ((void) (x))
+#define mu_unused(x) ((void) (x))
 
-#define expect(x) do {                                               \
-    if (!(x)) {                                                      \
-      fprintf(stderr, "Fatal error: %s:%d: assertion '%s' failed\n", \
-        __FILE__, __LINE__, #x);                                     \
-      abort();                                                       \
-    }                                                                \
+#define mu_expect(x) do {                                                      \
+    if (!(x)) {                                                                \
+      MU_LOG("Fatal error: %s:%d: assertion '%s' failed\n",                    \
+        __FILE__, __LINE__, #x);                                               \
+      MU_ABORT();                                                              \
+    }                                                                          \
   } while (0)
 
 
-#define push(stk, val) do {                                                 \
-    expect((stk).idx < (int) (sizeof((stk).items) / sizeof(*(stk).items))); \
-    (stk).items[ (stk).idx ] = (val);                                       \
-    (stk).idx++;                                                            \
+#define mu_push(stk, val) do {                                                 \
+    mu_expect((stk).idx < (int) (sizeof((stk).items) / sizeof(*(stk).items))); \
+    (stk).items[ (stk).idx ] = (val);                                          \
+    (stk).idx++;                                                               \
   } while (0)
 
 
-#define pop(stk) do {      \
-    expect((stk).idx > 0); \
-    (stk).idx--;           \
+#define mu_pop(stk) do {                                                       \
+    mu_expect((stk).idx > 0);                                                  \
+    (stk).idx--;                                                               \
   } while (0)
 
 
@@ -119,14 +119,14 @@ static int rect_overlaps_vec2(mu_Rect r, mu_Vec2 p) {
 
 
 static int text_width(mu_Font font, const char *str, int len) {
-  unused(font);
+  mu_unused(font);
   if (len < 0) { len = strlen(str); }
   return len * 8;
 }
 
 
 static int text_height(mu_Font font) {
-  unused(font);
+  mu_unused(font);
   return 16;
 }
 
@@ -172,10 +172,10 @@ static int compare_zindex(const void *a, const void *b) {
 void mu_end(mu_Context *ctx) {
   int i, n;
   /* check stacks */
-  expect(ctx->container_stack.idx == 0);
-  expect(ctx->clip_stack.idx      == 0);
-  expect(ctx->id_stack.idx        == 0);
-  expect(ctx->layout_stack.idx    == 0);
+  mu_expect(ctx->container_stack.idx == 0);
+  mu_expect(ctx->clip_stack.idx      == 0);
+  mu_expect(ctx->id_stack.idx        == 0);
+  mu_expect(ctx->layout_stack.idx    == 0);
 
   /* handle scroll input */
   if (ctx->scroll_target) {
@@ -252,28 +252,28 @@ mu_Id mu_get_id(mu_Context *ctx, const void *data, int size) {
 
 
 void mu_push_id(mu_Context *ctx, const void *data, int size) {
-  push(ctx->id_stack, mu_get_id(ctx, data, size));
+  mu_push(ctx->id_stack, mu_get_id(ctx, data, size));
 }
 
 
 void mu_pop_id(mu_Context *ctx) {
-  pop(ctx->id_stack);
+  mu_pop(ctx->id_stack);
 }
 
 
 void mu_push_clip_rect(mu_Context *ctx, mu_Rect rect) {
   mu_Rect last = mu_get_clip_rect(ctx);
-  push(ctx->clip_stack, clip_rect(rect, last));
+  mu_push(ctx->clip_stack, clip_rect(rect, last));
 }
 
 
 void mu_pop_clip_rect(mu_Context *ctx) {
-  pop(ctx->clip_stack);
+  mu_pop(ctx->clip_stack);
 }
 
 
 mu_Rect mu_get_clip_rect(mu_Context *ctx) {
-  expect(ctx->clip_stack.idx > 0);
+  mu_expect(ctx->clip_stack.idx > 0);
   return ctx->clip_stack.items[ ctx->clip_stack.idx - 1 ];
 }
 
@@ -294,7 +294,7 @@ static void push_layout(mu_Context *ctx, mu_Rect body, mu_Vec2 scroll) {
   memset(&layout, 0, sizeof(mu_Layout));
   layout.body = mu_rect(body.x - scroll.x, body.y - scroll.y, body.w, body.h);
   layout.max = mu_vec2(-0x1000000, -0x1000000);
-  push(ctx->layout_stack, layout);
+  mu_push(ctx->layout_stack, layout);
   mu_layout_row(ctx, 1, &width, 0);
 }
 
@@ -305,7 +305,7 @@ static mu_Layout* get_layout(mu_Context *ctx) {
 
 
 static void push_container(mu_Context *ctx, mu_Container *cnt) {
-  push(ctx->container_stack, cnt);
+  mu_push(ctx->container_stack, cnt);
   mu_push_id(ctx, &cnt, sizeof(mu_Container*));
 }
 
@@ -315,15 +315,15 @@ static void pop_container(mu_Context *ctx) {
   mu_Layout *layout = get_layout(ctx);
   cnt->content_size.x = layout->max.x - layout->body.x;
   cnt->content_size.y = layout->max.y - layout->body.y;
-  /* pop container, layout and id */
-  pop(ctx->container_stack);
-  pop(ctx->layout_stack);
+  /* mu_pop container, layout and id */
+  mu_pop(ctx->container_stack);
+  mu_pop(ctx->layout_stack);
   mu_pop_id(ctx);
 }
 
 
 mu_Container* mu_get_container(mu_Context *ctx) {
-  expect(ctx->container_stack.idx > 0);
+  mu_expect(ctx->container_stack.idx > 0);
   return ctx->container_stack.items[ ctx->container_stack.idx - 1 ];
 }
 
@@ -384,7 +384,7 @@ void mu_input_keyup(mu_Context *ctx, int key) {
 void mu_input_text(mu_Context *ctx, const char *text) {
   int len = strlen(ctx->text_input);
   int size = strlen(text) + 1;
-  expect(len + size <= (int) sizeof(ctx->text_input));
+  mu_expect(len + size <= (int) sizeof(ctx->text_input));
   memcpy(ctx->text_input + len, text, size);
 }
 
@@ -395,7 +395,7 @@ void mu_input_text(mu_Context *ctx, const char *text) {
 
 mu_Command* mu_push_command(mu_Context *ctx, int type, int size) {
   mu_Command *cmd = (mu_Command*) (ctx->command_list.items + ctx->command_list.idx);
-  expect(ctx->command_list.idx + size < MU_COMMANDLIST_SIZE);
+  mu_expect(ctx->command_list.idx + size < MU_COMMANDLIST_SIZE);
   cmd->base.type = type;
   cmd->base.size = size;
   ctx->command_list.idx += size;
@@ -493,7 +493,7 @@ void mu_draw_icon(mu_Context *ctx, int id, mu_Rect rect, mu_Color color) {
 ** layout
 **============================================================================*/
 
-enum { RELATIVE = 1, ABSOLUTE = 2 };
+enum { MU_RELATIVE = 1, MU_ABSOLUTE = 2 };
 
 
 void mu_layout_begin_column(mu_Context *ctx) {
@@ -504,7 +504,7 @@ void mu_layout_begin_column(mu_Context *ctx) {
 void mu_layout_end_column(mu_Context *ctx) {
   mu_Layout *a, *b;
   b = get_layout(ctx);
-  pop(ctx->layout_stack);
+  mu_pop(ctx->layout_stack);
   /* inherit position/next_row/max from child layout if they are greater */
   a = get_layout(ctx);
   a->position.x = mu_max(a->position.x, b->position.x + b->body.x - a->body.x);
@@ -517,7 +517,7 @@ void mu_layout_end_column(mu_Context *ctx) {
 void mu_layout_row(mu_Context *ctx, int items, const int *widths, int height) {
   mu_Layout *layout = get_layout(ctx);
   if (widths) {
-    expect(items <= MU_MAX_WIDTHS);
+    mu_expect(items <= MU_MAX_WIDTHS);
     memcpy(layout->widths, widths, items * sizeof(widths[0]));
   }
   layout->items = items;
@@ -540,7 +540,7 @@ void mu_layout_height(mu_Context *ctx, int height) {
 void mu_layout_set_next(mu_Context *ctx, mu_Rect r, int relative) {
   mu_Layout *layout = get_layout(ctx);
   layout->next = r;
-  layout->next_type = relative ? RELATIVE : ABSOLUTE;
+  layout->next_type = relative ? MU_RELATIVE : MU_ABSOLUTE;
 }
 
 
@@ -554,7 +554,7 @@ mu_Rect mu_layout_next(mu_Context *ctx) {
     int type = layout->next_type;
     layout->next_type = 0;
     res = layout->next;
-    if (type == ABSOLUTE) { return (ctx->last_rect = res); }
+    if (type == MU_ABSOLUTE) { return (ctx->last_rect = res); }
 
   } else {
     /* handle next row */
@@ -1030,8 +1030,8 @@ static void push_container_body(
 static void begin_root_container(mu_Context *ctx, mu_Container *cnt) {
   push_container(ctx, cnt);
 
-  /* push container to roots list and push head command */
-  push(ctx->root_list, cnt);
+  /* mu_push container to roots list and mu_push head command */
+  mu_push(ctx->root_list, cnt);
   cnt->head = push_jump(ctx, NULL);
 
   /* set as hover root if the mouse is overlapping this container and it has a
@@ -1044,17 +1044,17 @@ static void begin_root_container(mu_Context *ctx, mu_Container *cnt) {
   /* clipping is reset here in case a root-container is made within
   ** another root-containers's begin/end block; this prevents the inner
   ** root-container being clipped to the outer */
-  push(ctx->clip_stack, unclipped_rect);
+  mu_push(ctx->clip_stack, unclipped_rect);
 }
 
 
 static void end_root_container(mu_Context *ctx) {
-  /* push tail 'goto' jump command and set head 'skip' command. the final steps
+  /* mu_push tail 'goto' jump command and set head 'skip' command. the final steps
   ** on initing these are done in mu_end() */
   mu_Container *cnt = mu_get_container(ctx);
   cnt->tail = push_jump(ctx, NULL);
   cnt->head->jump.dst = ctx->command_list.items + ctx->command_list.idx;
-  /* pop base clip rect and container */
+  /* mu_pop base clip rect and container */
   mu_pop_clip_rect(ctx);
   pop_container(ctx);
 }

@@ -10,6 +10,14 @@
 
 #include <stdlib.h>
 
+#ifndef MU_LOG
+#define MU_LOG(...) fprintf(stderr, __VA_ARGS__)
+#endif
+
+#ifndef MU_ABORT
+#define MU_ABORT abort
+#endif
+
 #define MU_VERSION "1.02"
 
 #define MU_COMMANDLIST_SIZE     (1024 * 256)
